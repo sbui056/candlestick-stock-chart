@@ -1,9 +1,10 @@
 import datetime as dt
-import yfinance as yf
-import plotly.graph_objects as go
 import tkinter as tk
 from tkinter import messagebox
 import tkinter.simpledialog as simpledialog
+import yfinance as yf
+import plotly.graph_objects as go
+import plotly.subplots as sp
 
 def submit():
     """Handle submission of data"""
@@ -67,19 +68,30 @@ except Exception as e:
     messagebox.showerror("Error", f"Error downloading data: {e}")
     exit(1)
 
-# Ensure working with a copy and reorder the 4 crucial columns
+# Ensure working with a copy and reorder the 4 necessary columns for a candlestick plot
 df = df.copy()  # Ensure you're working with a copy of the DataFrame
 df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
 df.rename(columns={'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close', 'Volume': 'volume'}, inplace=True)
 
 # Plot using Plotly for interactivity
-fig = go.Figure(data=[go.Candlestick(x=df.index,
-                                     open=df['open'],
-                                     high=df['high'],
-                                     low=df['low'],
-                                     close=df['close']),
-                      go.Scatter(x=df.index, y=df['close'].rolling(window=20).mean(), line=dict(color='blue', width=1.5), name='20-day MA'),
-                      go.Scatter(x=df.index, y=df['close'].rolling(window=50).mean(), line=dict(color='orange', width=1.5), name='50-day MA')])
+# Create subplots: one for candlestick and one for volume
+fig = sp.make_subplots(rows=2, cols=1, shared_xaxes=True, subplot_titles=(f'{stockTicker} Interactive Candlestick Chart', 'Volume'), row_width=[0.7, 0.3])
 
-fig.update_layout(title=f'{stockTicker} Interactive Candlestick Chart', xaxis_title='Date', yaxis_title='Price')
+# Candlestick
+fig.add_trace(go.Candlestick(x=df.index, open=df['open'], high=df['high'], low=df['low'], close=df['close']), row=1, col=1)
+
+# Moving Averages
+fig.add_trace(go.Scatter(x=df.index, y=df['close'].rolling(window=20).mean(), line=dict(color='blue', width=1.5), name='20-day MA'), row=1, col=1)
+fig.add_trace(go.Scatter(x=df.index, y=df['close'].rolling(window=50).mean(), line=dict(color='orange', width=1.5), name='50-day MA'), row=1, col=1)
+
+# Volume
+fig.add_trace(go.Bar(x=df.index, y=df['volume'], name='Volume'), row=2, col=1)
+
+# Update layout
+fig.update_layout(title=f'{stockTicker} Interactive Candlestick Chart with Volume',
+                  xaxis_title='Date',
+                  yaxis_title='Price',
+                  yaxis2_title='Volume',
+                  showlegend=True)
+
 fig.show()
